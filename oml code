@@ -1,0 +1,132 @@
+%sql
+SELECT * FROM NEW_TABLE_S2G3_1;
+
+%python
+
+import pandas as pd
+import oml
+
+data = oml.sync(query = 'select * from NEW_TABLE_S2G3_1')
+
+Data
+
+%python
+#dataset split
+x, y = data.split(ratio = (0.6,0.4))
+TRAIN_X = x.drop('DEATH_ZONE')
+TRAIN_Y = x['DEATH_ZONE']
+TEST_X = y.drop('DEATH_ZONE')
+TEST_Y = y['DEATH_ZONE']
+
+#random forest training
+setting = dict()
+rf_mod = oml.rf(**setting)
+rf_mod.fit(TRAIN_X, TRAIN_Y)
+#random forest score
+random_forest_score=rf_mod.score(TEST_X, TEST_Y)
+random_forest_score
+
+%python
+#random forest prediction 
+RES_DF = rf_mod.predict(TEST_X, supplemental_cols = TEST_X)
+RES_DF
+
+%python
+
+
+#random forest probability after prediction
+RES_DF = rf_mod.predict(TEST_X)
+# Additionally collect the PROBABILITY_OF_0 and PROBABILITY_OF_1
+RES_PROB = rf_mod.predict_proba(TEST_X)
+# Join the entire result into RES_DF
+RES_PROB
+
+%python
+#naive bayes
+nb_mod = oml.nb(**setting)
+nb_mod.fit(TRAIN_X, TRAIN_Y)
+nb_score=nb_mod.score(TEST_X, TEST_Y)
+nb_score
+%python
+ # Gather the Predictions
+RES_nb = nb_mod.predict(TEST_X, supplemental_cols = TEST_X)
+RES_nb
+
+%python
+# Additionally collect the PROBABILITY_OF_0 and PROBABILITY_OF_1
+RES_PROB_nb = nb_mod.predict_proba(TEST_X)
+RES_PROB_nb
+
+%python
+#neural network training
+nn_mod = oml.nn('classification', **setting)
+nn_mod .fit(TRAIN_X, TRAIN_Y)
+
+#neural network prediction 
+neural_network_score=nn_mod.score(TEST_X, TEST_Y)
+neural_network_score
+
+%python
+#decision_tree training
+dt_mod = oml.dt(**setting)
+dt_mod.fit(TRAIN_X, TRAIN_Y)
+
+#decision_tree prediction 
+decision_tree_score=dt_mod.score(TEST_X, TEST_Y)
+decision_tree_score
+
+%python
+#all scores from algorithm
+a = []
+a.append(random_forest_score)
+a.append(neural_network_score)
+a.append(decision_tree_score)
+a.append(nb_score)
+a
+
+%sql
+select * from score;
+
+%python
+RES_DF = RES_DF.merge(RES_PROB, how = "inner", suffixes = ["", ""])
+z.show(RES_DF)
+
+%sql
+delete from  prediction;
+
+%sql
+insert into prediction values(20210410,19943,136703,26077,5343,5);
+
+%python
+pred = oml.sync(query = 'select * from prediction')
+pred
+
+%python
+random_forest_pred = rf_mod.predict(pred)
+random_forest_pred
+
+%python
+nb_pred=nb_mod.predict(pred)
+nb_pred
+
+%python
+decision_tree_pred = dt_mod.predict(pred)
+decision_tree_pred
+
+%python
+neural_net_pred = nn_mod.predict(pred)
+neural_net_pred
+
+%python
+df = pd.DataFrame({"DAYY" : [20210410],
+                   "FIRST_DOSE_VACCINE_NUMBER" : [19943],
+                   "SECOND_DOSE_VACCINE_NUMBER" : [136703],
+                   "LAB_TEST" : [26077],
+                   "CONFIRMED_CASE" : [5343],
+                   "DEATH_CASE" : [6]})
+oml_df = oml.push(df)
+oml_df
+
+%python
+random_forest_pred = rf_mod.predict(oml_df)
+random_forest_pred
